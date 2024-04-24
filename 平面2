@@ -1,0 +1,48 @@
+using UnityEngine;
+
+public class RealisticObjectGenerator : MonoBehaviour
+{
+    public GameObject realisticObjectPrefab; // 本物のようなオブジェクトのプレハブ
+    public GameObject destroyedObjectPrefab; // 破壊されたオブジェクトのプレハブ
+    public Texture2D objectTexture; // オブジェクトのテクスチャ
+    public GameObject playerPrefab; // プレイヤーのプレハブ
+    public float explosionForce = 1000f; // 爆発の力
+    public float explosionRadius = 10f; // 爆発の半径
+
+    void Start()
+    {
+        // プレイヤーを生成する
+        GameObject player = Instantiate(playerPrefab, Vector3.zero, Quaternion.identity);
+
+        // 本物のようなオブジェクトを生成する
+        GameObject realisticObject = Instantiate(realisticObjectPrefab, Vector3.zero, Quaternion.identity);
+        
+        // オブジェクトの位置とサイズを設定する
+        realisticObject.transform.position = new Vector3(0, 0, 0);
+        realisticObject.transform.localScale = new Vector3(1, 1, 1); // オブジェクトのサイズを調整する
+
+        // オブジェクトにリアルなテクスチャを適用する
+        MeshRenderer renderer = realisticObject.GetComponent<MeshRenderer>();
+        renderer.material.mainTexture = objectTexture;
+
+        // 破壊可能なオブジェクトとして設定する
+        BreakableObject breakableObject = realisticObject.AddComponent<BreakableObject>();
+        breakableObject.destroyedVersion = destroyedObjectPrefab;
+
+        // 物理挙動を追加する
+        Rigidbody rb = realisticObject.AddComponent<Rigidbody>();
+        rb.mass = 1000; // オブジェクトの質量を設定する
+        rb.drag = 0.5f; // 空気抵抗をシミュレートする
+        rb.angularDrag = 0.5f; // 回転の空気抵抗をシミュレートする
+        rb.isKinematic = false; // オブジェクトが物理演算に従うようにする
+        rb.useGravity = true; // 重力を有効にする
+
+        // プレイヤーに手のインタラクションを追加する
+        player.AddComponent<HandInteraction>();
+        // HandInteractionスクリプトに必要な設定を追加する
+        HandInteraction handInteraction = player.GetComponent<HandInteraction>();
+        handInteraction.constructionPrefab = realisticObjectPrefab;
+        handInteraction.buildDistance = 5f; // 建築可能な距離を設定する
+        handInteraction.destroyDistance = 5f; // 破壊可能な距離を設定する
+    }
+}
