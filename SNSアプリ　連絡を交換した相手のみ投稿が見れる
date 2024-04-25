@@ -1,0 +1,62 @@
+# models.py
+
+from django.db import models
+from django.contrib.auth.models import User
+
+class Post(models.Model):
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.TextField()
+    image = models.ImageField(upload_to='post_images/', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    visible_to = models.ForeignKey(User, related_name='visible_posts', on_delete=models.CASCADE)
+
+# views.py
+
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from .models import Post
+
+@login_required
+def create_post(request):
+    if request.method == 'POST':
+        content = request.POST.get('content')
+        visible_to_id = request.POST.get('visible_to_id')
+        image = request.FILES.get('image')
+        if content:
+            post = Post.objects.create(author=request.user, content=content, image=image, visible_to_id=visible_to_id)
+            return redirect('home')  # Assuming you have a URL named 'home'
+    return render(request, 'create_post.html')
+
+@login_required
+def home(request):
+    if request.method == 'GET':
+        user = request.user
+        # Filter posts visible to current user
+        visible_posts = Post.objects.filter(visible_to=user)
+        return render(request, 'home.html', {'posts': visible_posts})
+
+# create_post.html
+
+<form method="POST" action="{% url 'create_post' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <textarea name="content"></textarea>
+    <input type="file" name="image">
+    <select name="visible_to_id">
+        {% for friend in user.friend_friendships.all %}
+            <option value="{{ friend.id }}">{{ friend.username }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit">Post</button>
+</form>
+
+# home.html
+
+{% for post in posts %}
+    <div>
+        <p>{{ post.author.username }}:</p>
+        <p>{{ post.content }}</p>
+        {% if post.image %}
+            <img src="{{ post.image.url }}" alt="Post Image">
+        {% endif %}
+    </div>
+{% endfor %}
