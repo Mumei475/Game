@@ -1,0 +1,52 @@
+# models.py
+
+from django.db import models
+from django.contrib.auth.models import User
+
+class Post(models.Model):
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    visible_to_friends_only = models.BooleanField(default=True)
+
+# views.py
+
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from .models import Post
+
+@login_required
+def create_post(request):
+    if request.method == 'POST':
+        content = request.POST.get('content')
+        visible_to_friends_only = request.POST.get('visible_to_friends_only', False)
+        if content:
+            post = Post.objects.create(author=request.user, content=content, visible_to_friends_only=visible_to_friends_only)
+            return redirect('home')  # Assuming you have a URL named 'home'
+    return render(request, 'create_post.html')
+
+@login_required
+def home(request):
+    if request.method == 'GET':
+        user = request.user
+        # Filter posts visible to friends only
+        friends_posts = Post.objects.filter(visible_to_friends_only=True, author__in=user.profile.friends.all())
+        return render(request, 'home.html', {'posts': friends_posts})
+
+# create_post.html
+
+<form method="POST" action="{% url 'create_post' %}">
+    {% csrf_token %}
+    <textarea name="content"></textarea>
+    <input type="checkbox" name="visible_to_friends_only" value="true"> Only visible to friends
+    <button type="submit">Post</button>
+</form>
+
+# home.html
+
+{% for post in posts %}
+    <div>
+        <p>{{ post.author.username }}:</p>
+        <p>{{ post.content }}</p>
+    </div>
+{% endfor %}
