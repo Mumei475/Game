@@ -1,0 +1,60 @@
+# forms.py
+
+from django import forms
+from .models import Post
+
+class PostForm(forms.ModelForm):
+    class Meta:
+        model = Post
+        fields = ['content', 'image', 'visible_to']
+
+    def __init__(self, user, *args, **kwargs):
+        super(PostForm, self).__init__(*args, **kwargs)
+        self.fields['visible_to'].queryset = user.friend_friendships.all()
+
+# views.py
+
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from .forms import PostForm
+from .models import Post
+
+@login_required
+def create_post(request):
+    if request.method == 'POST':
+        form = PostForm(request.user, request.POST, request.FILES)
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.author = request.user
+            post.save()
+            return redirect('home')
+    else:
+        form = PostForm(request.user)
+    return render(request, 'create_post.html', {'form': form})
+
+@login_required
+def home(request):
+    if request.method == 'GET':
+        user = request.user
+        visible_posts = Post.objects.filter(visible_to=user)
+        return render(request, 'home.html', {'posts': visible_posts})
+
+# create_post.html
+
+<form method="POST" action="{% url 'create_post' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Post</button>
+</form>
+
+# home.html
+
+{% for post in posts %}
+    <div>
+        <p>{{ post.author.username }}:</p>
+        <p>{{ post.content }}</p>
+        {% if post.image %}
+            <img src="{{ post.image.url }}" alt="Post Image">
+        {% endif %}
+    </div>
+{% endfor %}
