@@ -1,0 +1,49 @@
+# models.py
+
+from django.db import models
+from django.contrib.auth.models import User
+
+class Subscription(models.Model):
+    subscriber = models.ForeignKey(User, related_name='subscriptions', on_delete=models.CASCADE)
+    target_user = models.ForeignKey(User, related_name='subscribers', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('subscriber', 'target_user')
+
+class SubscriptionPlan(models.Model):
+    name = models.CharField(max_length=100)
+    price_per_month = models.DecimalField(max_digits=10, decimal_places=2)
+
+# views.py
+
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseForbidden
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.clickjacking import xframe_options_sameorigin
+from .forms import PostForm
+from .models import Post, Subscription, SubscriptionPlan
+
+@ensure_csrf_cookie  # すべてのレスポンスにCSRFトークンを含める
+@xframe_options_sameorigin  # クリックジャッキング対策を有効化
+@login_required
+def home(request):
+    user = request.user
+
+    # ユーザーが購読している投稿のみを表示
+    subscribed_users = Subscription.objects.filter(subscriber=user).values_list('target_user', flat=True)
+    visible_posts = Post.objects.filter(author__in=subscribed_users)
+
+    # POSTリクエストでのアクションを処理
+    if request.method == 'POST':
+        # ログインユーザーが他のユーザーの投稿を変更できないようにする
+        return HttpResponseForbidden("この操作は許可されていません。")
+
+    # フォームの作成
+    form = PostForm(request.user)
+
+    # サブスクリプションプランの取得
+    subscription_plan = SubscriptionPlan.objects.get(name='1 Dollar Plan')  # 月額1ドルのプラン
+
+    return render(request, 'home.html', {'posts': visible_posts, 'form': form, 'subscription_plan': subscription_plan})
