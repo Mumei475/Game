@@ -1,0 +1,18 @@
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from .models import Subscription, SubscriptionPlan
+from .forms import SubscriptionForm
+
+@login_required
+def subscribe(request):
+    if request.method == 'POST':
+        form = SubscriptionForm(request.POST)
+        if form.is_valid():
+            plan_id = form.cleaned_data['plan']
+            plan = SubscriptionPlan.objects.get(pk=plan_id)
+            subscription = Subscription(user=request.user, plan=plan)
+            subscription.save()
+            return redirect('home')  # ユーザーのホームページにリダイレクト
+    else:
+        form = SubscriptionForm()
+    return render(request, 'subscribe.html', {'form': form})
