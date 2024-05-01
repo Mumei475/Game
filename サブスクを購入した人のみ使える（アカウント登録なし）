@@ -1,0 +1,36 @@
+from flask import Flask, redirect, url_for
+
+app = Flask(__name__)
+
+# サブスクリプション購入済みのユーザー集合
+subscribed_users = set()
+
+# ユーザーがサブスクリプションを購入したかどうかを確認する関数
+def is_subscribed(user_id):
+    return user_id in subscribed_users
+
+# サブスクリプション購入時の処理
+def purchase_subscription(user_id):
+    subscribed_users.add(user_id)
+
+# アプリのトップページ
+@app.route('/')
+def index():
+    return 'Welcome to the app!'
+
+# サブスクリプション購入ページ
+@app.route('/subscribe/<user_id>')
+def subscribe(user_id):
+    if not is_subscribed(user_id):
+        purchase_subscription(user_id)
+    return redirect(url_for('index'))
+
+# 招待リンクを生成する関数
+def generate_invite_link(user_id):
+    if is_subscribed(user_id):
+        return f'http://yourapp.com/invite/{user_id}'
+    else:
+        return 'You need to subscribe first.'
+
+if __name__ == '__main__':
+    app.run(debug=True)
