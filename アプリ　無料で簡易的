@@ -1,0 +1,115 @@
+# バックエンドのサーバー側のコード（Python Flask）
+
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+# ユーザー情報を格納するリスト
+users = []
+# 投稿情報を格納するリスト
+posts = []
+# 招待情報を格納するリスト
+invitations = []
+# お知らせを格納するリスト
+notifications = []
+
+# ユーザー登録、自動ログイン、投稿作成
+@app.route('/register', methods=['POST'])
+def register_user():
+    user_name = request.json.get('name')
+    if user_name:
+        # ユーザーを登録し、自動的にログインさせる
+        user_id = len(users) + 1
+        users.append({'id': user_id, 'name': user_name})
+        # ユーザーが投稿するためのトークン（仮）を生成
+        token = f'token_{user_id}'
+        # ログイン成功とトークンを返す
+        return jsonify({'message': 'User registered and logged in successfully', 'token': token})
+    else:
+        return jsonify({'error': 'Name is required'}), 400
+
+# 投稿作成
+@app.route('/post', methods=['POST'])
+def create_post():
+    token = request.headers.get('Authorization')
+    # トークンをチェックしてユーザーを特定
+    user = get_user_by_token(token)
+    if user:
+        post_content = request.json.get('content')
+        if post_content:
+            posts.append({'user_id': user['id'], 'content': post_content})
+            return jsonify({'message': 'Post created successfully'})
+        else:
+            return jsonify({'error': 'Content is required'}), 400
+    else:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+# ユーザー情報をトークンで取得
+def get_user_by_token(token):
+    if token:
+        user_id = int(token.split('_')[1])
+        for user in users:
+            if user['id'] == user_id:
+                return user
+    return None
+
+# 招待送信
+@app.route('/invite', methods=['POST'])
+def send_invitation():
+    token = request.headers.get('Authorization')
+    invited_user_id = request.json.get('invited_user_id')
+    if token and invited_user_id:
+        inviting_user = get_user_by_token(token)
+        if inviting_user:
+            # 招待情報を作成してリストに追加
+            invitations.append({'inviting_user_id': inviting_user['id'], 'invited_user_id': invited_user_id})
+            return jsonify({'message': 'Invitation sent successfully'})
+        else:
+            return jsonify({'error': 'Unauthorized'}), 401
+    else:
+        return jsonify({'error': 'Token and invited_user_id are required'}), 400
+
+# 投稿取得（招待されたユーザーか招待したユーザーのみが閲覧可能）
+@app.route('/posts', methods=['GET'])
+def view_posts():
+    token = request.headers.get('Authorization')
+    user = get_user_by_token(token)
+    if user:
+        accessible_posts = []
+        for post in posts:
+            if post['user_id'] == user['id']:  # 投稿者自身は見れる
+                accessible_posts.append(post)
+            else:
+                for invitation in invitations:
+                    if (invitation['inviting_user_id'] == user['id'] or invitation['invited_user_id'] == user['id']) and post['user_id'] == invitation['inviting_user_id']:
+                        accessible_posts.append(post)
+                        break
+        return jsonify(accessible_posts)
+    else:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+# お知らせ作成
+@app.route('/notification', methods=['POST'])
+def send_notification():
+    notification_content = request.json.get('content')
+    if notification_content:
+        # お知らせを作成しリストに追加
+        notifications.append(notification_content)
+        return jsonify({'message': 'Notification sent successfully'})
+    else:
+        return jsonify({'error': 'Content is required'}), 400
+
+# お問い合わせ
+@app.route('/contact', methods=['POST'])
+def contact_admin():
+    token = request.headers.get('Authorization')
+    user = get_user_by_token(token)
+    message = request.json.get('message')
+    if user and message:
+        # 管理者へのお問い合わせを処理する（例：メール送信、データベースへ保存など）
+        return jsonify({'message': 'Your message has been sent to the administrator.'})
+    else:
+        return jsonify({'error': 'Unauthorized or message is required'}), 401
+
+if __name__ == '__main__':
+    app.run(debug=True)
