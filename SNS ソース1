@@ -1,0 +1,58 @@
+class User:
+    def __init__(self, username, email):
+        self.username = username
+        self.email = email
+
+class Post:
+    def __init__(self, content, photo=None, link=None):
+        self.content = content
+        self.photo = photo
+        self.link = link
+
+class Notification:
+    def __init__(self, message):
+        self.message = message
+
+class Inquiry:
+    def __init__(self, sender, message):
+        self.sender = sender
+        self.message = message
+
+class SocialPlatform:
+    def __init__(self):
+        self.users = []
+        self.posts = []
+        self.notifications = []
+        self.inquiries = []
+
+    def invite_user(self, username, email):
+        user = User(username, email)
+        self.users.append(user)
+
+    def create_post(self, user, content, photo=None, link=None):
+        post = Post(content, photo, link)
+        self.posts.append((user, post))
+
+    def send_notification(self, message):
+        notification = Notification(message)
+        self.notifications.append(notification)
+
+    def send_inquiry(self, sender, message):
+        inquiry = Inquiry(sender, message)
+        self.inquiries.append(inquiry)
+
+# Example usage:
+social_platform = SocialPlatform()
+
+# Invite users
+social_platform.invite_user("User1", "user1@example.com")
+social_platform.invite_user("User2", "user2@example.com")
+
+# Create posts
+social_platform.create_post("User1", "Hello World!", photo="example.jpg", link="example.com")
+
+# Send notifications
+social_platform.send_notification("New post available!")
+
+# Send inquiry
+social_platform.send_inquiry("User2", "How does this feature work?")
