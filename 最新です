@@ -1,0 +1,38 @@
+import uuid
+
+class SocialPlatform:
+    def __init__(self):
+        self.posts = []
+        self.notifications = []
+        self.inquiries = []
+        self.invitations = {}
+
+    def create_post(self, content, photo=None, link=None):
+        post = Post(content, photo, link)
+        self.posts.append(post)
+        self.send_notification("New post available!")
+
+    def view_posts(self):
+        return [post for post in self.posts]
+
+    def send_notification(self, message):
+        notification = Notification(message)
+        self.notifications.append(notification)
+
+    def send_inquiry(self, sender, message):
+        inquiry = Inquiry(sender, message)
+        self.inquiries.append(inquiry)
+
+    def invite_user(self, sender, link):
+        invitation_id = str(uuid.uuid4())
+        if sender in self.invitations:
+            self.invitations[sender][invitation_id] = link
+        else:
+            self.invitations[sender] = {invitation_id: link}
+
+    def add_self(self, invitation_id, receiver, content, photo=None, link=None):
+        if invitation_id in self.invitations:
+            link = self.invitations[invitation_id]
+            self.create_post(content, photo, link)
+        else:
+            print("Invalid invitation ID.")
