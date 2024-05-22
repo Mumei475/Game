@@ -1,0 +1,177 @@
+import Foundation
+
+class SocialPlatform {
+    var users: [String: User] = [:]
+    var posts: [Post] = []
+    var notifications: [Notification] = []
+    var inquiries: [Inquiry] = []
+    var invitations: [String: [String: String]] = [:]
+
+    func addUser(username: String) -> String? {
+        if users[username] != nil {
+            print("Username \(username) is already taken.")
+            return nil
+        }
+        let user = User(username: username)
+        users[username] = user
+        print("User added with username: \(username)")
+        return username
+    }
+
+    func createPost(username: String, content: String, photo: String? = nil, link: String? = nil) {
+        guard let _ = users[username] else {
+            print("Invalid username.")
+            return
+        }
+        let post = Post(username: username, content: content, photo: photo, link: link)
+        posts.append(post)
+        sendNotification(message: "New post available from \(username)!")
+    }
+
+    func viewPosts() -> [Post] {
+        return posts
+    }
+
+    func sendNotification(message: String) {
+        let notification = Notification(message: message)
+        notifications.append(notification)
+        for user in users.values {
+            user.receiveNotification(notification: notification)
+        }
+    }
+
+    func sendInquiry(username: String, message: String) {
+        guard let _ = users[username] else {
+            print("Invalid username.")
+            return
+        }
+        let inquiry = Inquiry(sender: username, message: message)
+        inquiries.append(inquiry)
+    }
+
+    func inviteUser(username: String, link: String) -> String? {
+        guard let _ = users[username] else {
+            print("Invalid username.")
+            return nil
+        }
+        let invitationID = UUID().uuidString
+        if invitations[username] != nil {
+            invitations[username]?[invitationID] = link
+        } else {
+            invitations[username] = [invitationID: link]
+        }
+        print("Invitation sent with ID: \(invitationID)")
+        return invitationID
+    }
+
+    func addSelf(invitationID: String, receiverUsername: String, content: String, photo: String? = nil, link: String? = nil) {
+        for (sender, invitations) in invitations {
+            if let link = invitations[invitationID] {
+                let post = Post(username: receiverUsername, content: content, photo: photo, link: link)
+                posts.append(post)
+                print("\(receiverUsername) added a new post using invitation ID: \(invitationID)")
+                return
+            }
+        }
+        print("Invalid invitation ID.")
+    }
+
+    func changeUsername(oldUsername: String, newUsername: String) {
+        guard let user = users[oldUsername] else {
+            print("Old username does not exist.")
+            return
+        }
+        if users[newUsername] != nil {
+            print("Username \(newUsername) is already taken.")
+            return
+        }
+        user.username = newUsername
+        users.removeValue(forKey: oldUsername)
+        users[newUsername] = user
+        print("Username changed from \(oldUsername) to \(newUsername)")
+    }
+
+    func registerWithEmail(email: String, password: String) {
+        let userInfo = getUserInfo(email: email)
+        if let userInfo = userInfo {
+            users[email] = userInfo
+            print("User registered with email authentication.")
+        } else {
+            print("Failed to register user with email.")
+        }
+    }
+
+    func getUserInfo(email: String) -> User? {
+        return User(username: email)
+    }
+}
+
+class User {
+    var username: String
+
+    init(username: String) {
+        self.username = username
+    }
+
+    func receiveNotification(notification: Notification) {
+        print("Notification received: \(notification.message)")
+    }
+}
+
+class Post: CustomStringConvertible {
+    let id: String
+    let username: String
+    let content: String
+    let photo: String?
+    let link: String?
+
+    init(username: String, content: String, photo: String? = nil, link: String? = nil) {
+        self.id = UUID().uuidString
+        self.username = username
+        self.content = content
+        self.photo = photo
+        self.link = link
+    }
+
+    var description: String {
+        return "Post by \(username): \(content)"
+    }
+}
+
+class Notification {
+    let message: String
+
+    init(message: String) {
+        self.message = message
+    }
+}
+
+class Inquiry {
+    let sender: String
+    let message: String
+
+    init(sender: String, message: String) {
+        self.sender = sender
+        self.message = message
+    }
+}
+
+// Usage example
+let platform = SocialPlatform()
+platform.addUser(username: "Alice")
+platform.addUser(username: "Bob")
+
+if let invitationID1 = platform.inviteUser(username: "Alice", link: "https://example.com/invite"),
+   let invitationID2 = platform.inviteUser(username: "Bob", link: "https://example.com/invite") {
+    platform.createPost(username: "Alice", content: "Alice's first post")
+    platform.createPost(username: "Bob", content: "Bob's first post")
+
+    platform.addSelf(invitationID: invitationID1, receiverUsername: "Charlie", content: "Charlie's post using Alice's invitation")
+    platform.addSelf(invitationID: invitationID2, receiverUsername: "Dave", content: "Dave's post using Bob's invitation")
+
+    platform.changeUsername(oldUsername: "Alice", newUsername: "Alice_Wonderland")
+
+    platform.registerWithEmail(email: "test@example.com", password: "password123")
+
+    print(platform.viewPosts())
+}
