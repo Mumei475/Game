@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Social Platform</title>
+</head>
+<body>
+    <h1>Welcome to the Social Platform</h1>
+    <form action="/add_user" method="post">
+        <input type="text" name="username" placeholder="Enter username">
+        <input type="submit" value="Add User">
+    </form>
+    <form action="/create_post" method="post">
+        <input type="text" name="username" placeholder="Enter username">
+        <input type="text" name="content" placeholder="Enter content">
+        <input type="submit" value="Create Post">
+    </form>
+    <a href="/view_posts">View Posts</a>
+</body>
+</html>
