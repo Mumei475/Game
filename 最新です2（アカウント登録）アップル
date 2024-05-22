@@ -1,0 +1,54 @@
+import requests
+import json
+
+class SocialPlatform:
+    def __init__(self):
+        self.users = {}
+
+    def register_with_apple(self, authorization_code):
+        # Appleのトークン取得エンドポイント
+        token_url = "https://appleid.apple.com/auth/token"
+
+        # AppleのクライアントIDとシークレットキー
+        client_id = "YOUR_CLIENT_ID"
+        client_secret = "YOUR_CLIENT_SECRET"
+
+        # アクセストークンを取得するためのリクエストパラメータ
+        token_request_data = {
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "code": authorization_code,
+            "grant_type": "authorization_code"
+        }
+
+        # アクセストークンの取得
+        response = requests.post(token_url, data=token_request_data)
+        if response.status_code == 200:
+            token_response = response.json()
+
+            # アクセストークンからユーザーの情報を取得
+            user_info = self.get_user_info(token_response["id_token"])
+
+            # ユーザー情報の登録
+            if user_info:
+                self.users[token_response["sub"]] = user_info  # subはAppleのユーザーの一意の識別子
+                print("User registered with Apple authentication.")
+            else:
+                print("Failed to get user info from Apple.")
+        else:
+            print("Failed to get access token from Apple.")
+
+    def get_user_info(self, id_token):
+        # id_tokenからユーザーの情報を取得するロジックを実装する
+        # ここでは簡略化のために、id_tokenをデコードしてそのまま返す
+        try:
+            user_info = json.loads(id_token.split(".")[1])
+            return user_info
+        except Exception as e:
+            print("Failed to decode id_token:", e)
+            return None
+
+# Usage example
+platform = SocialPlatform()
+authorization_code = "AUTHORIZATION_CODE_FROM_APPLE"  # Appleの認証から取得した認証コード
+platform.register_with_apple(authorization_code)
