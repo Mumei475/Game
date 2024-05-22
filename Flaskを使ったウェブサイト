@@ -1,0 +1,140 @@
+from flask import Flask, request, jsonify, render_template, redirect, url_for
+import uuid
+
+app = Flask(__name__)
+
+class SocialPlatform:
+    def __init__(self):
+        self.users = {}
+        self.posts = []
+        self.notifications = []
+        self.inquiries = []
+        self.invitations = {}
+
+    def add_user(self, username):
+        if username in self.users:
+            return f"Username {username} is already taken."
+        user = User(username)
+        self.users[username] = user
+        return f"User added with username: {username}"
+
+    def create_post(self, username, content, photo=None, link=None):
+        if username not in self.users:
+            return "Invalid username."
+        post = Post(username, content, photo, link)
+        self.posts.append(post)
+        self.send_notification(f"New post available from {username}!")
+        return f"Post created by {username}"
+
+    def view_posts(self):
+        return [post.__repr__() for post in self.posts]
+
+    def send_notification(self, message):
+        notification = Notification(message)
+        self.notifications.append(notification)
+        for user in self.users.values():
+            user.receive_notification(notification)
+
+    def send_inquiry(self, username, message):
+        if username not in self.users:
+            return "Invalid username."
+        inquiry = Inquiry(username, message)
+        self.inquiries.append(inquiry)
+        return f"Inquiry sent by {username}"
+
+    def invite_user(self, username, link):
+        if username not in self.users:
+            return "Invalid username."
+        invitation_id = str(uuid.uuid4())
+        if username in self.invitations:
+            self.invitations[username][invitation_id] = link
+        else:
+            self.invitations[username] = {invitation_id: link}
+        return f"Invitation sent with ID: {invitation_id}"
+
+    def add_self(self, invitation_id, receiver_username, content, photo=None, link=None):
+        for sender, invitations in self.invitations.items():
+            if invitation_id in invitations:
+                link = invitations[invitation_id]
+                post = Post(receiver_username, content, photo, link)
+                self.posts.append(post)
+                return f"{receiver_username} added a new post using invitation ID: {invitation_id}"
+        return "Invalid invitation ID."
+
+    def change_username(self, old_username, new_username):
+        if old_username not in self.users:
+            return "Old username does not exist."
+        if new_username in self.users:
+            return f"Username {new_username} is already taken."
+        user = self.users.pop(old_username)
+        user.username = new_username
+        self.users[new_username] = user
+        return f"Username changed from {old_username} to {new_username}"
+
+    def register_with_email(self, email, password):
+        user_info = self.get_user_info(email)
+        if user_info:
+            self.users[email] = user_info
+            return "User registered with email authentication."
+        else:
+            return "Failed to register user with email."
+
+    def get_user_info(self, email):
+        return User(email)
+
+class User:
+    def __init__(self, username):
+        self.username = username
+
+    def receive_notification(self, notification):
+        print(f"Notification received: {notification.message}")
+
+class Post:
+    def __init__(self, username, content, photo=None, link=None):
+        self.id = str(uuid.uuid4())
+        self.username = username
+        self.content = content
+        self.photo = photo
+        self.link = link
+
+    def __repr__(self):
+        return f"Post by {self.username}: {self.content}"
+
+class Notification:
+    def __init__(self, message):
+        self.message = message
+
+class Inquiry:
+    def __init__(self, sender, message):
+        self.sender = sender
+        self.message = message
+
+# Initialize the social platform
+platform = SocialPlatform()
+
+@app.route('/')
+def home():
+    return render_template('index.html')
+
+@app.route('/add_user', methods=['POST'])
+def add_user():
+    username = request.form['username']
+    result = platform.add_user(username)
+    return result
+
+@app.route('/create_post', methods=['POST'])
+def create_post():
+    username = request.form['username']
+    content = request.form['content']
+    result = platform.create_post(username, content)
+    return result
+
+@app.route('/view_posts', methods=['GET'])
+def view_posts():
+    posts = platform.view_posts()
+    return jsonify(posts)
+
+# More routes for other functionalities can be added here...
+
+if __name__ == '__main__':
+    app.run(debug=True)
