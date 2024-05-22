@@ -1,0 +1,143 @@
+import uuid
+import requests
+import json
+
+class SocialPlatform:
+    def __init__(self):
+        self.users = {}
+        self.posts = []
+        self.notifications = []
+        self.inquiries = []
+        self.invitations = {}
+
+    def add_user(self, username):
+        if username in self.users:
+            print(f"Username {username} is already taken.")
+            return None
+        user = User(username)
+        self.users[username] = user
+        print(f"User added with username: {username}")
+        return username
+
+    def create_post(self, username, content, photo=None, link=None):
+        if username not in self.users:
+            print("Invalid username.")
+            return
+        post = Post(username, content, photo, link)
+        self.posts.append(post)
+        self.send_notification(f"New post available from {username}!")
+
+    def view_posts(self):
+        return [post for post in self.posts]
+
+    def send_notification(self, message):
+        notification = Notification(message)
+        self.notifications.append(notification)
+        for user in self.users.values():
+            user.receive_notification(notification)
+
+    def send_inquiry(self, username, message):
+        if username not in self.users:
+            print("Invalid username.")
+            return
+        inquiry = Inquiry(username, message)
+        self.inquiries.append(inquiry)
+
+    def invite_user(self, username, link):
+        if username not in self.users:
+            print("Invalid username.")
+            return
+        invitation_id = str(uuid.uuid4())
+        if username in self.invitations:
+            self.invitations[username][invitation_id] = link
+        else:
+            self.invitations[username] = {invitation_id: link}
+        print(f"Invitation sent with ID: {invitation_id}")
+        return invitation_id
+
+    def add_self(self, invitation_id, receiver_username, content, photo=None, link=None):
+        for sender, invitations in self.invitations.items():
+            if invitation_id in invitations:
+                link = invitations[invitation_id]
+                post = Post(receiver_username, content, photo, link)
+                self.posts.append(post)
+                print(f"{receiver_username} added a new post using invitation ID: {invitation_id}")
+                return
+        print("Invalid invitation ID.")
+
+    def change_username(self, old_username, new_username):
+        if old_username not in self.users:
+            print("Old username does not exist.")
+            return
+        if new_username in self.users:
+            print(f"Username {new_username} is already taken.")
+            return
+        user = self.users.pop(old_username)
+        user.username = new_username
+        self.users[new_username] = user
+        print(f"Username changed from {old_username} to {new_username}")
+
+    def register_with_email(self, email, password):
+        # ここでメールアドレスとパスワードを使用した認証を実装します。
+        # 例えば、メールアドレスとパスワードをサーバーに送信してユーザー情報を取得します。
+        
+        # 簡略化のために、ユーザー情報を直接作成します。
+        user_info = self.get_user_info(email)
+        
+        if user_info:
+            self.users[email] = user_info
+            print("User registered with email authentication.")
+        else:
+            print("Failed to register user with email.")
+
+    def get_user_info(self, email):
+        # ここでメールアドレスからユーザー情報を取得するロジックを実装します。
+        # 簡略化のため、ユーザー情報を直接作成して返します。
+        return User(email)
+
+class User:
+    def __init__(self, username):
+        self.username = username
+
+    def receive_notification(self, notification):
+        print(f"Notification received: {notification.message}")
+
+class Post:
+    def __init__(self, username, content, photo=None, link=None):
+        self.id = str(uuid.uuid4())
+        self.username = username
+        self.content = content
+        self.photo = photo
+        self.link = link
+
+    def __repr__(self):
+        return f"Post by {self.username}: {self.content}"
+
+class Notification:
+    def __init__(self, message):
+        self.message = message
+
+class Inquiry:
+    def __init__(self, sender, message):
+        self.sender = sender
+        self.message = message
+
+# Usage example
+platform = SocialPlatform()
+platform.add_user("Alice")
+platform.add_user("Bob")
+
+invitation_id_1 = platform.invite_user("Alice", "https://example.com/invite")
+invitation_id_2 = platform.invite_user("Bob", "https://example.com/invite")
+
+platform.create_post("Alice", "Alice's first post")
+platform.create_post("Bob", "Bob's first post")
+
+platform.add_self(invitation_id_1, "Charlie", "Charlie's post using Alice's invitation")
+platform.add_self(invitation_id_2, "Dave", "Dave's post using Bob's invitation")
+
+platform.change_username("Alice", "Alice_Wonderland")
+
+platform.register_with_email("test@example.com", "password123")
+
+print(platform.view_posts())
